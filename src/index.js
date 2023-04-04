@@ -2,6 +2,7 @@ const path = require("path");
 const http = require("http");
 const express = require("express");
 const socketio = require("socket.io");
+const serverless = require("serverless-http");
 const Filter = require("bad-words");
 const {
   generateMessage,
@@ -15,6 +16,8 @@ const {
 } = require("./utils/users");
 
 const app = express();
+const router = express.Router();
+module.exports.handler = serverless(app);
 const server = http.createServer(app);
 const io = socketio(server);
 
@@ -90,6 +93,8 @@ io.on("connection", (socket) => {
     }
   });
 });
+
+app.use("/.netlify/node-chat-app");
 
 server.listen(port, () => {
   console.log(`Server is up in  port -- ${port}`);
