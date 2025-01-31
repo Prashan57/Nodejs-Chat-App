@@ -1,0 +1,9 @@
+[build]
+  base = "/"
+  publish = "public"  # Folder containing your HTML/CSS/JS files
+  functions = "functions"  # Folder containing your serverless functions
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
