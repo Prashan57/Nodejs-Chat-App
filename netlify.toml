@@ -1,9 +1,9 @@
 [build]
-  base = "/"
-  publish = "public"  # Folder containing your HTML/CSS/JS files
-  functions = "functions"  # Folder containing your serverless functions
+  command = "npm install && npm run build"
+  functions = "functions"
+  publish = "public"
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/server"
   status = 200

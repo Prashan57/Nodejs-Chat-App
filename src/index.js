@@ -17,11 +17,9 @@ const {
 
 const app = express();
 const router = express.Router();
-module.exports.handler = serverless(app);
 const server = http.createServer(app);
 const io = socketio(server);
 
-const port = process.env.PORT || 3000;
 const publicDirectoryPath = path.join(__dirname, "../public");
 
 app.use(express.static(publicDirectoryPath));
@@ -50,9 +48,6 @@ io.on("connection", (socket) => {
       users: getUsersInRoom(user.room),
     });
     callback();
-    //socket.emit,io.emit,socket.broadcast.emit
-    //io.to.emit --> emits value in that certain room
-    //socket.broadcast.to.emit
   });
 
   socket.on("sendMessage", (message, callback) => {
@@ -94,8 +89,6 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use("/.netlify/node-chat-app", router);
+app.use("/.netlify/functions/server", router);
 
-server.listen(port, () => {
-  console.log(`Server is up in  port -- ${port}`);
-});
+module.exports.handler = serverless(app);
