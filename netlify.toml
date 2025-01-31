@@ -1,9 +1,8 @@
 [build]
-  command = "npm install"
-  functions = "functions"  # Directory where serverless functions are stored
-  publish = "public"       # Directory for static files (e.g., HTML, CSS, JS)
+  functions = "functions"  # Location of your serverless functions
+  publish = "public"       # Location of your static files (like HTML, CSS, JS)
 
 [[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/server"  # Redirect all traffic to your serverless function
+  from = "/api/*"
+  to = "/.netlify/functions/chat"
   status = 200
