@@ -1,0 +1,228 @@
+const path = require("path");
+const http = require("http");
+const express = require("express");
+const socketio = require("socket.io");
+const serverless = require("serverless-http");
+const Filter = require("bad-words");
+
+const {
+  generateMessage,
+  generateLocationMessage,
+} = require("./utils/messages");
+const {
+  addUser,
+  removeUser,
+  getUser,
+  getUsersInRoom,
+} = require("./utils/users");
+
+const app = express();
+const router = express.Router();
+module.exports.handler = serverless(app);
+const server = http.createServer(app);
+const io = socketio(server);
+
+const port = process.env.PORT || 3000;
+const publicDirectoryPath = path.join(__dirname, "../public");
+
+app.use(express.static(publicDirectoryPath));
+
+io.on("connection", (socket) => {
+  console.log("New Websocket Connection");
+
+  socket.on("join", (options, callback) => {
+    const { error, user } = addUser({ id: socket.id, ...options });
+
+    if (error) {
+      return callback(error);
+    }
+
+    socket.join(user.room);
+
+    socket.emit("message", generateMessage("Admin", "Welcome!"));
+    socket.broadcast
+      .to(user.room)
+      .emit(
+        "message",
+        generateMessage("Admin", `${user.username} has joined!`)
+      );
+    io.to(user.room).emit("roomData", {
+      room: user.room,
+      users: getUsersInRoom(user.room),
+    });
+    callback();
+    //socket.emit,io.emit,socket.broadcast.emit
+    //io.to.emit --> emits value in that certain room
+    //socket.broadcast.to.emit
+  });
+
+  socket.on("sendMessage", (message, callback) => {
+    const user = getUser(socket.id);
+
+    const filter = new Filter();
+    if (filter.isProfane(message)) {
+      return callback("Profanity is not allowed");
+    }
+
+    io.to(user.room).emit("message", generateMessage(user.username, message));
+    callback();
+  });
+
+  socket.on("sendLocation", (coords, callback) => {
+    const user = getUser(socket.id);
+    io.to(user.room).emit(
+      "locationMessage",
+      generateLocationMessage(
+        user.username,
+        `https://google.com/maps?q=${coords.latitude},${coords.longitude}`
+      )
+    );
+    callback();
+  });
+
+  socket.on("disconnect", () => {
+    const user = removeUser(socket.id);
+    if (user) {
+      io.to(user.room).emit(
+        "message",
+        generateMessage("Admin", `${user.username} has left the chat...`)
+      );
+      io.to(user.room).emit("roomData", {
+        room: user.room,
+        users: getUsersInRoom(user.room),
+      });
+    }
+  });
+});
+
+app.use("/.netlify/node-chat-app", router);
+
+server.listen(port, () => {
+  console.log(`Server is up in  port -- ${port}`);
+});
+
+
+
+////////////////////////
+const socket = io();
+
+//Elements
+const $messageForm = document.querySelector("#message-form");
+const $messageFormInput = $messageForm.querySelector("input");
+const $messageFormButton = $messageForm.querySelector("button");
+const $sendLocationButton = document.querySelector("#send-location");
+const $messages = document.querySelector("#messages");
+
+//Templates
+const messageTemplate = document.querySelector("#message-template").innerHTML;
+const locationMessageTemplate = document.querySelector(
+  "#location-message-template"
+).innerHTML;
+const sidebarTemplate = document.querySelector("#sidebar-template").innerHTML;
+
+//Options
+const { username, room } = Qs.parse(location.search, {
+  ignoreQueryPrefix: true,
+});
+
+const autoScroll = () => {
+  //New Message
+  const $newMessage = $messages.lastElementChild;
+
+  //Height of the new message
+  const newMessageStyles = getComputedStyle($newMessage);
+  const newMessageMargin = parseInt(newMessageStyles.marginBottom);
+  const newMessageHeight = $newMessage.offsetHeight + newMessageMargin;
+
+  //Visible Height
+  const visibleHeight = $messages.offsetHeight;
+
+  //Height of messages container
+  const containerHeight = $messages.scrollHeight;
+
+  //How far have i scrolled
+  const scrollOffset = $messages.scrollTop + visibleHeight;
+
+  if (containerHeight - newMessageHeight <= scrollOffset) {
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+
+  console.log(newMessageMargin);
+};
+
+socket.on("message", (message) => {
+  console.log(message);
+  const html = Mustache.render(messageTemplate, {
+    username: message.username,
+    message: message.text,
+    createdAt: moment(message.createdAt).format("hh:mm A"),
+  });
+  $messages.insertAdjacentHTML("beforeend", html);
+  autoScroll();
+});
+
+socket.on("locationMessage", (message) => {
+  console.log(message);
+  const html = Mustache.render(locationMessageTemplate, {
+    username: message.username,
+    url: message.url,
+    createdAt: moment(message.createdAt).format("hh:mm A"),
+  });
+  $messages.insertAdjacentHTML("beforeend", html);
+});
+
+socket.on("roomData", ({ room, users }) => {
+  const html = Mustache.render(sidebarTemplate, {
+    room,
+    users,
+  });
+  document.querySelector("#sidebar").innerHTML = html;
+});
+
+$messageForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  $messageFormButton.setAttribute("disabled", "disabled");
+  //disable
+
+  const message = e.target.elements.message.value;
+  socket.emit("sendMessage", message, (error) => {
+    $messageFormButton.removeAttribute("disabled");
+    $messageFormInput.value = "";
+    $messageFormInput.focus();
+    //enable
+    if (error) {
+      return console.log(error);
+    }
+    console.log("Message delivered");
+  });
+});
+
+$sendLocationButton.addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    return alert("Geolocation is not supported by your browser");
+  }
+
+  $sendLocationButton.setAttribute("disabled", "disabled");
+
+  navigator.geolocation.getCurrentPosition((position) => {
+    socket.emit(
+      "sendLocation",
+      {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      },
+      () => {
+        $sendLocationButton.removeAttribute("disabled");
+        console.log("Location Shared !");
+      }
+    );
+  });
+});
+
+socket.emit("join", { username, room }, (error) => {
+  if (error) {
+    alert(error);
+    location.href = "/";
+  }
+});
