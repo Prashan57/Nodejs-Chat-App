@@ -1,10 +1,9 @@
-const express = require("express");
+const path = require("path");
 const http = require("http");
+const express = require("express");
 const socketio = require("socket.io");
 const serverless = require("serverless-http");
 const Filter = require("bad-words");
-const path = require("path");
-
 const {
   generateMessage,
   generateLocationMessage,
@@ -18,26 +17,27 @@ const {
 
 const app = express();
 const router = express.Router();
+module.exports.handler = serverless(app);
 const server = http.createServer(app);
-const io = socketio(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
+const io = socketio(server);
 
+const port = process.env.PORT || 3000;
 const publicDirectoryPath = path.join(__dirname, "../public");
+
 app.use(express.static(publicDirectoryPath));
 
 io.on("connection", (socket) => {
-  console.log("New WebSocket connection");
+  console.log("New Websocket Connection");
 
   socket.on("join", (options, callback) => {
     const { error, user } = addUser({ id: socket.id, ...options });
 
-    if (error) return callback(error);
+    if (error) {
+      return callback(error);
+    }
 
     socket.join(user.room);
+
     socket.emit("message", generateMessage("Admin", "Welcome!"));
     socket.broadcast
       .to(user.room)
@@ -45,19 +45,20 @@ io.on("connection", (socket) => {
         "message",
         generateMessage("Admin", `${user.username} has joined!`)
       );
-
     io.to(user.room).emit("roomData", {
       room: user.room,
       users: getUsersInRoom(user.room),
     });
-
     callback();
+    //socket.emit,io.emit,socket.broadcast.emit
+    //io.to.emit --> emits value in that certain room
+    //socket.broadcast.to.emit
   });
 
   socket.on("sendMessage", (message, callback) => {
     const user = getUser(socket.id);
-    const filter = new Filter();
 
+    const filter = new Filter();
     if (filter.isProfane(message)) {
       return callback("Profanity is not allowed");
     }
@@ -93,6 +94,8 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use("/.netlify/functions/server", router);
+app.use("/.netlify/node-chat-app", router);
 
-module.exports.handler = serverless(app);
+server.listen(port, () => {
+  console.log(`Server is up in  port -- ${port}`);
+});

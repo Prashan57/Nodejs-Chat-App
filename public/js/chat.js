@@ -1,41 +1,51 @@
-const socket = io(window.location.origin); // Automatically connects to the correct URL (local or prod)
+const socket = io();
 
-// Elements
+//Elements
 const $messageForm = document.querySelector("#message-form");
 const $messageFormInput = $messageForm.querySelector("input");
 const $messageFormButton = $messageForm.querySelector("button");
 const $sendLocationButton = document.querySelector("#send-location");
 const $messages = document.querySelector("#messages");
 
-// Templates
+//Templates
 const messageTemplate = document.querySelector("#message-template").innerHTML;
 const locationMessageTemplate = document.querySelector(
   "#location-message-template"
 ).innerHTML;
 const sidebarTemplate = document.querySelector("#sidebar-template").innerHTML;
 
-// Options from URL query parameters
+//Options
 const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });
 
-// Auto Scroll Function
 const autoScroll = () => {
+  //New Message
   const $newMessage = $messages.lastElementChild;
+
+  //Height of the new message
   const newMessageStyles = getComputedStyle($newMessage);
   const newMessageMargin = parseInt(newMessageStyles.marginBottom);
   const newMessageHeight = $newMessage.offsetHeight + newMessageMargin;
+
+  //Visible Height
   const visibleHeight = $messages.offsetHeight;
+
+  //Height of messages container
   const containerHeight = $messages.scrollHeight;
+
+  //How far have i scrolled
   const scrollOffset = $messages.scrollTop + visibleHeight;
 
   if (containerHeight - newMessageHeight <= scrollOffset) {
     $messages.scrollTop = $messages.scrollHeight;
   }
+
+  console.log(newMessageMargin);
 };
 
-// Receive messages from the server
 socket.on("message", (message) => {
+  console.log(message);
   const html = Mustache.render(messageTemplate, {
     username: message.username,
     message: message.text,
@@ -45,8 +55,8 @@ socket.on("message", (message) => {
   autoScroll();
 });
 
-// Receive location messages from the server
 socket.on("locationMessage", (message) => {
+  console.log(message);
   const html = Mustache.render(locationMessageTemplate, {
     username: message.username,
     url: message.url,
@@ -55,7 +65,6 @@ socket.on("locationMessage", (message) => {
   $messages.insertAdjacentHTML("beforeend", html);
 });
 
-// Update room data (users and room name)
 socket.on("roomData", ({ room, users }) => {
   const html = Mustache.render(sidebarTemplate, {
     room,
@@ -64,18 +73,18 @@ socket.on("roomData", ({ room, users }) => {
   document.querySelector("#sidebar").innerHTML = html;
 });
 
-// Send message
 $messageForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  $messageFormButton.setAttribute("disabled", "disabled"); // Disable the send button
+  $messageFormButton.setAttribute("disabled", "disabled");
+  //disable
+
   const message = e.target.elements.message.value;
-
   socket.emit("sendMessage", message, (error) => {
-    $messageFormButton.removeAttribute("disabled"); // Re-enable button
-    $messageFormInput.value = ""; // Clear input field
-    $messageFormInput.focus(); // Focus on input field again
-
+    $messageFormButton.removeAttribute("disabled");
+    $messageFormInput.value = "";
+    $messageFormInput.focus();
+    //enable
     if (error) {
       return console.log(error);
     }
@@ -83,7 +92,6 @@ $messageForm.addEventListener("submit", (e) => {
   });
 });
 
-// Send location
 $sendLocationButton.addEventListener("click", () => {
   if (!navigator.geolocation) {
     return alert("Geolocation is not supported by your browser");
@@ -100,13 +108,12 @@ $sendLocationButton.addEventListener("click", () => {
       },
       () => {
         $sendLocationButton.removeAttribute("disabled");
-        console.log("Location Shared!");
+        console.log("Location Shared !");
       }
     );
   });
 });
 
-// Join room and handle errors
 socket.emit("join", { username, room }, (error) => {
   if (error) {
     alert(error);
