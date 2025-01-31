@@ -94,7 +94,7 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use("/.netlify/node-chat-app", router);
+app.use("/.netlify/functions/server", router);
 
 server.listen(port, () => {
   console.log(`Server is up in  port -- ${port}`);
