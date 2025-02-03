@@ -1,0 +1,14 @@
+{
+	"geolocation": {
+		"data": {
+			"country": {
+				"code": "NP",
+				"name": "Nepal"
+			},
+			"timezone": "Asia/Kathmandu",
+			"latitude": 28,
+			"longitude": 84
+		},
+		"timestamp": 1738560821617
+	}
+}
