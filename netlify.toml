@@ -1,5 +1,5 @@
 [build]
-  functions = "functions"  # Location of your serverless functions
+  functions = "netlify/functions"  # Location of your serverless functions
   publish = "public"       # Location of your static files (like HTML, CSS, JS)
 
 [[redirects]]
