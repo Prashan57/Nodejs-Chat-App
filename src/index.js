@@ -21,7 +21,7 @@ module.exports.handler = serverless(app);
 const server = http.createServer(app);
 const io = socketio(server);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 1234;
 const publicDirectoryPath = path.join(__dirname, "../public");
 
 app.use(express.static(publicDirectoryPath));
