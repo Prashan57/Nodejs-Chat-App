@@ -2,6 +2,7 @@ const path = require("path");
 const http = require("http");
 const express = require("express");
 const socketio = require("socket.io");
+const serverless = require("serverless-http");
 const Filter = require("bad-words");
 const {
   generateMessage,
@@ -22,6 +23,14 @@ const port = process.env.PORT || 1234;
 const publicDirectoryPath = path.join(__dirname, "../public");
 
 app.use(express.static(publicDirectoryPath));
+
+const router = express.Router();
+router.get("/", (req, res) => {
+  res.sendFile(path.join(publicDirectoryPath, "index.html"));
+});
+// Handle the function path if hit directly or via rewrite
+app.use("/.netlify/functions/api", router);
+app.use("/", router);
 
 io.on("connection", (socket) => {
   console.log("New Websocket Connection");
@@ -47,9 +56,6 @@ io.on("connection", (socket) => {
       users: getUsersInRoom(user.room),
     });
     callback();
-    //socket.emit,io.emit,socket.broadcast.emit
-    //io.to.emit --> emits value in that certain room
-    //socket.broadcast.to.emit
   });
 
   socket.on("sendMessage", (message, callback) => {
@@ -91,8 +97,12 @@ io.on("connection", (socket) => {
   });
 });
 
+// Export for Netlify
+module.exports.handler = serverless(app);
 
-
-server.listen(port, () => {
-  console.log(`Server is up in  port -- ${port}`);
-});
+// Only listen if not running in a serverless environment (or if explicitly run with node)
+if (require.main === module) {
+  server.listen(port, () => {
+    console.log(`Server is up in  port -- ${port}`);
+  });
+}
